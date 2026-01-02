@@ -1,6 +1,5 @@
 import { RoomConfiguration } from '@livekit/protocol';
 import bodyParser from 'body-parser';
-import dotenv from 'dotenv';
 import express from 'express';
 import { AccessToken } from 'livekit-server-sdk';
 
@@ -8,6 +7,7 @@ type TokenRequest = {
   room_name?: string;
   participant_name?: string;
   participant_identity?: string;
+  is_broadcaster?: boolean;
   participant_metadata?: string;
   participant_attributes?: Record<string, string>;
   room_config?: ReturnType<RoomConfiguration['toJson']>;
@@ -17,13 +17,12 @@ type TokenRequest = {
   participantName?: string;
 };
 
-// Load environment variables from .env.local file
-dotenv.config({ path: '.env.local' });
 
 // This route handler creates a token for a given room and participant
 async function createToken(request: TokenRequest) {
   const roomName = request.room_name ?? request.roomName!;
   const participantName = request.participant_name ?? request.participantName!;
+  const isHost = request.is_broadcaster === true;
 
   const at = new AccessToken(process.env.LIVEKIT_API_KEY, process.env.LIVEKIT_API_SECRET, {
     identity: participantName,
@@ -36,6 +35,10 @@ async function createToken(request: TokenRequest) {
   at.addGrant({
     roomJoin: true,
     room: roomName,
+    canPublish: isHost,
+    canPublishData: isHost,
+    canSubscribe: true,
+    hidden: !isHost,
     canUpdateOwnMetadata: true,
   });
 
